@@ -1,0 +1,10 @@
+[project]
+name = "lungai-diagnostics"
+version = "0.1.0"
+description = "AI-powered lung disease detection (demo scaffold)"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
