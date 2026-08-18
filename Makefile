@@ -1,25 +1,13 @@
-.PHONY: setup train eval infer runserver test docker-build docker-run
+.PHONY: setup test train eval
 
 setup:
-	python -m venv .venv && . .venv/bin/activate && pip install -U pip && pip install -r requirements.txt
-
-train:
-	. .venv/bin/activate && python src/lungai/train.py
-
-eval:
-	. .venv/bin/activate && python src/lungai/evaluate.py || true
-
-infer:
-	. .venv/bin/activate && python src/lungai/infer.py --image sample.jpg || true
-
-runserver:
-	. .venv/bin/activate && python src/web/manage.py migrate && python src/web/manage.py runserver 0.0.0.0:8000
+	python3 -m venv .venv && . .venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
 
 test:
-	. .venv/bin/activate && pytest -q
+	. .venv/bin/activate && pytest
 
-docker-build:
-	docker build -t lungai:latest -f docker/Dockerfile .
+train:
+	. .venv/bin/activate && PYTHONPATH=src python -m lungai.training.train --train-csv data/train.csv --val-csv data/val.csv
 
-docker-run:
-	docker run --rm -p 8000:8000 lungai:latest
+eval:
+	. .venv/bin/activate && PYTHONPATH=src python -m lungai.evaluation.evaluate --test-csv data/test.csv --checkpoint artifacts/models/best_model.pt
