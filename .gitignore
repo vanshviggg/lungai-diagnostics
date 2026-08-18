@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+.env.*
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Data and generated artifacts
+data/
+models/
+*.pt
+*.pth
+*.ckpt
+artifacts/models/
+
+# Logs
+*.log
+
+# Notebooks
+.ipynb_checkpoints/
