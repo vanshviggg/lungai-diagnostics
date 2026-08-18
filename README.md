@@ -1,71 +1,128 @@
 # LungAI Diagnostics
 
-LungAI Diagnostics is an explainable AI research prototype for thoracic disease classification from chest X-ray images. The project is designed as a reproducible machine-learning pipeline using PyTorch, transfer learning, measurable evaluation, and model explainability.
+LungAI Diagnostics is a reproducible PyTorch research prototype for multi-label classification of three thoracic findings from chest X-rays: cardiomegaly, pneumonia, and pneumothorax.
 
-> **Research-use disclaimer:** This repository is for education, research, and software-engineering demonstration only. It is not a medical device, has not been clinically validated, and must not be used for diagnosis or patient-care decisions.
+> **Medical disclaimer:** This project is for education, research, and software-engineering demonstration only. It is not a medical device, has not been clinically validated, and must not be used for diagnosis, triage, treatment, or patient-care decisions.
 
-## Current scope
+## Project objective
 
-The first implementation focuses on a transparent baseline pipeline:
+The project demonstrates an end-to-end machine-learning workflow: dataset preparation, transfer learning, class-imbalance handling, validation-based decision-threshold selection, held-out test evaluation, visual reporting, and automated checks.
 
-1. Load and preprocess chest X-ray images.
-2. Fine-tune a pretrained DenseNet121 classifier.
-3. Produce per-class probabilities using sigmoid outputs.
-4. Evaluate the trained model with measurable metrics.
-5. Add explainability and a web/API demonstration after the baseline is validated.
+## Dataset and split strategy
 
-## Planned disease labels
+The pipeline expects CSV files containing a `path` column and one binary column per disease. Training, validation, and test data are kept separate:
 
-The initial prototype is structured for three thoracic findings:
+- Training data fits the model.
+- Validation data selects one F1-maximizing threshold per disease.
+- Test data is used only for final reporting after thresholds are locked.
 
-- Cardiomegaly
-- Pneumonia
-- Pneumothorax
+The model-ready development splits live under `data/processed/dev/`. Raw images and generated patient-level data are not committed to Git.
 
-The label set can be expanded after the baseline pipeline is validated on a documented public dataset.
+## Model architecture
 
-## Tech stack
+The classifier is a DenseNet121 initialized with ImageNet weights. Its final layer is replaced with three logits, one per disease. Sigmoid converts logits into independent probabilities, allowing more than one finding per image.
 
-- Python
-- PyTorch
-- Torchvision
-- Pandas / NumPy
-- Scikit-learn
-- Pillow
-- Pytest
+## Training process
 
-## Repository structure
+Images are resized to 224 × 224 and normalized with ImageNet statistics. Training augmentation includes random horizontal flips and small rotations. The model uses AdamW and binary cross-entropy with per-label positive-class weights to address class imbalance. The checkpoint with the lowest validation loss is saved as `artifacts/models/best_model.pt`.
 
-```text
-lungai-diagnostics/
-├── src/lungai/
-│   ├── config.py
-│   ├── data/transforms.py
-│   ├── models/chest_xray_model.py
-│   └── inference/predictor.py
-├── tests/
-├── artifacts/
-├── docs/
-├── requirements.txt
-├── pyproject.toml
-└── README.md
-```
+## Validation threshold tuning
 
-## Setup
+A single threshold of 0.5 is often unsuitable for imbalanced disease labels. The tuner searches 0.05–0.95 in 0.01 increments on validation data and maximizes F1 independently for each label.
+
+| Disease | Locked threshold | Validation precision | Validation recall | Validation F1 | Validation AUROC |
+|---|---:|---:|---:|---:|---:|
+| Cardiomegaly | 0.89 | 0.347 | 0.509 | 0.413 | 0.923 |
+| Pneumonia | 0.68 | 0.040 | 0.183 | 0.065 | 0.673 |
+| Pneumothorax | 0.81 | 0.210 | 0.438 | 0.284 | 0.821 |
+
+These are validation results, not final test claims.
+
+## Final test metrics
+
+Final test metrics are intentionally pending until the locked thresholds are applied to the model-ready test split. The evaluator saves `artifacts/metrics/final_test_evaluation.json` and generates ROC curves, precision-recall curves, and per-label confusion matrices. After that run, this section should be updated from the generated JSON without retuning thresholds.
+
+## Installation
 
 ```bash
+git clone https://github.com/vanshviggg/lungai-diagnostics.git
+cd lungai-diagnostics
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Current project status
+## Usage
 
-The repository is under active development. Model training results, AUROC/F1/precision/recall metrics, Grad-CAM outputs, screenshots, and deployment evidence will only be added after they are generated from actual runs.
+Train a model:
 
-## Evidence policy
+```bash
+PYTHONPATH=src python -m lungai.training.train \
+  --train-csv data/processed/dev/train.csv \
+  --val-csv data/processed/dev/val.csv
+```
 
-No clinical-performance claims are made without reproducible experiments. Any future metrics in this repository will include the dataset, split methodology, evaluation code, and generated artifacts needed to reproduce them.
+Tune thresholds on validation data:
+
+```bash
+PYTHONPATH=src python -m lungai.evaluation.tune_thresholds \
+  --val-csv data/processed/dev/val.csv \
+  --checkpoint artifacts/models/best_model.pt
+```
+
+Run the final test evaluation with locked thresholds:
+
+```bash
+PYTHONPATH=src python -m lungai.evaluation.evaluate \
+  --test-csv data/processed/dev/test.csv \
+  --checkpoint artifacts/models/best_model.pt \
+  --thresholds-json artifacts/metrics/thresholds.json
+```
+
+Run automated checks:
+
+```bash
+pytest
+```
+
+## Generated visual results
+
+The final evaluator creates:
+
+- `artifacts/plots/roc_curves.png`
+- `artifacts/plots/precision_recall_curves.png`
+- `artifacts/plots/confusion_matrices.png`
+
+## Repository structure
+
+```text
+src/lungai/
+├── config.py
+├── data/
+│   ├── dataset.py
+│   └── transforms.py
+├── evaluation/
+│   ├── evaluate.py
+│   └── tune_thresholds.py
+├── inference/
+├── models/
+│   └── chest_xray_model.py
+└── training/
+    └── train.py
+tests/
+artifacts/
+requirements.txt
+pyproject.toml
+```
+
+## Limitations
+
+- Performance is dataset-specific and may not generalize to other hospitals, devices, populations, or imaging protocols.
+- Severe class imbalance makes precision and F1 especially weak for pneumonia.
+- Labels derived from reports may contain noise and are not equivalent to adjudicated clinical diagnoses.
+- Thresholds optimize validation F1, which may not match a real clinical operating objective.
+- No external validation, calibration study, fairness audit, prospective study, or regulatory review has been performed.
+- Predictions should never be interpreted without qualified clinical oversight.
 
 ## License
 
