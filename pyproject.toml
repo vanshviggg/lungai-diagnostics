@@ -1,10 +1,12 @@
 [project]
 name = "lungai-diagnostics"
 version = "0.1.0"
-description = "AI-powered lung disease detection (demo scaffold)"
+description = "Explainable chest X-ray classification research prototype"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
