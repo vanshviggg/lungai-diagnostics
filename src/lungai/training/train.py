@@ -1,16 +1,36 @@
 import argparse
 from pathlib import Path
 
+import pandas as pd
 import torch
 from torch import nn
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from lungai.config import BATCH_SIZE, DISEASE_LABELS, MODEL_DIR
+from lungai.config import BATCH_SIZE, DISEASE_LABELS, MODEL_DIR, NUM_WORKERS
 from lungai.data.dataset import ChestXrayDataset
 from lungai.data.transforms import train_transform, validation_transform
 from lungai.models.chest_xray_model import create_model
+
+
+def get_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
+def compute_pos_weight(train_csv: str, device: torch.device) -> torch.Tensor:
+    df = pd.read_csv(train_csv)
+    positives = torch.tensor(
+        [float(df[label].sum()) for label in DISEASE_LABELS],
+        dtype=torch.float32,
+    )
+    negatives = float(len(df)) - positives
+    weights = negatives / positives.clamp_min(1.0)
+    return weights.to(device)
 
 
 def run_epoch(model, loader, loss_fn, device, optimizer=None):
@@ -38,16 +58,37 @@ def run_epoch(model, loader, loss_fn, device, optimizer=None):
 
 
 def train(train_csv: str, val_csv: str, epochs: int = 5, lr: float = 1e-4):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
+    print(f"device={device}")
 
     train_ds = ChestXrayDataset(train_csv, transform=train_transform)
     val_ds = ChestXrayDataset(val_csv, transform=validation_transform)
 
-    train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False)
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        num_workers=NUM_WORKERS,
+    )
+    val_loader = DataLoader(
+        val_ds,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        num_workers=NUM_WORKERS,
+    )
 
     model = create_model(len(DISEASE_LABELS), pretrained=True).to(device)
-    loss_fn = nn.BCEWithLogitsLoss()
+
+    pos_weight = compute_pos_weight(train_csv, device)
+    print(
+        "pos_weight="
+        + ", ".join(
+            f"{label}:{weight:.2f}"
+            for label, weight in zip(DISEASE_LABELS, pos_weight.detach().cpu().tolist())
+        )
+    )
+
+    loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = AdamW(model.parameters(), lr=lr)
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
