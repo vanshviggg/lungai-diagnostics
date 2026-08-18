@@ -20,6 +20,24 @@ def get_device() -> torch.device:
     return torch.device("cpu")
 
 
+def select_best_threshold(
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    thresholds: np.ndarray,
+) -> float:
+    scores = np.array(
+        [
+            f1_score(
+                y_true,
+                (y_prob >= threshold).astype(int),
+                zero_division=0,
+            )
+            for threshold in thresholds
+        ]
+    )
+    return float(thresholds[int(np.argmax(scores))])
+
+
 def tune_thresholds(
     val_csv: str,
     checkpoint: str,
@@ -82,18 +100,7 @@ def tune_thresholds(
         true_col = y_true[:, index]
         prob_col = y_prob[:, index]
 
-        scores = np.array(
-            [
-                f1_score(
-                    true_col,
-                    (prob_col >= threshold).astype(int),
-                    zero_division=0,
-                )
-                for threshold in thresholds
-            ]
-        )
-        best_index = int(np.argmax(scores))
-        best_threshold = float(thresholds[best_index])
+        best_threshold = select_best_threshold(true_col, prob_col, thresholds)
         pred_col = (prob_col >= best_threshold).astype(int)
 
         metrics = {
