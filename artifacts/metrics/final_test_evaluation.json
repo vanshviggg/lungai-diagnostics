@@ -1,0 +1,37 @@
+{
+  "thresholds": {
+    "Cardiomegaly": 0.8900000000000001,
+    "Pneumonia": 0.6800000000000002,
+    "Pneumothorax": 0.8100000000000002
+  },
+  "labels": {
+    "Cardiomegaly": {
+      "threshold": 0.8900000000000001,
+      "precision": 0.3987730061349693,
+      "recall": 0.4482758620689655,
+      "f1": 0.42207792207792205,
+      "auroc": 0.9059064199929936,
+      "support": 145
+    },
+    "Pneumonia": {
+      "threshold": 0.6800000000000002,
+      "precision": 0.016241299303944315,
+      "recall": 0.125,
+      "f1": 0.028747433264887063,
+      "auroc": 0.6290722093586775,
+      "support": 56
+    },
+    "Pneumothorax": {
+      "threshold": 0.8100000000000002,
+      "precision": 0.19301848049281314,
+      "recall": 0.45410628019323673,
+      "f1": 0.27089337175792505,
+      "auroc": 0.7947497153460128,
+      "support": 207
+    }
+  },
+  "device": "mps",
+  "test_csv": "data/processed/dev/test.csv",
+  "checkpoint": "artifacts/models/best_model.pt",
+  "thresholds_json": "artifacts/metrics/thresholds.json"
+}
