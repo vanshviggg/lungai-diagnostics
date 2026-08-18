@@ -1,6 +1,5 @@
 import argparse
 import json
-from pathlib import Path
 
 import numpy as np
 import torch
@@ -13,13 +12,23 @@ from lungai.data.transforms import validation_transform
 from lungai.models.chest_xray_model import create_model
 
 
+def get_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
 def evaluate(test_csv: str, checkpoint: str, threshold: float = 0.5) -> dict:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
+    print(f"device={device}")
+
     dataset = ChestXrayDataset(test_csv, transform=validation_transform)
     loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     model = create_model(len(DISEASE_LABELS), pretrained=False)
-    model.load_state_dict(torch.load(checkpoint, map_location=device))
+    model.load_state_dict(torch.load(checkpoint, map_location="cpu"))
     model.to(device)
     model.eval()
 
@@ -37,7 +46,7 @@ def evaluate(test_csv: str, checkpoint: str, threshold: float = 0.5) -> dict:
     y_prob = np.concatenate(all_probs)
     y_pred = (y_prob >= threshold).astype(int)
 
-    results = {"threshold": threshold, "labels": {}}
+    results = {"threshold": threshold, "device": str(device), "labels": {}}
 
     for index, label in enumerate(DISEASE_LABELS):
         true_col = y_true[:, index]
