@@ -40,7 +40,15 @@ These are validation results, not final test claims.
 
 ## Final test metrics
 
-Final test metrics are intentionally pending until the locked thresholds are applied to the model-ready test split. The evaluator saves `artifacts/metrics/final_test_evaluation.json` and generates ROC curves, precision-recall curves, and per-label confusion matrices. After that run, this section should be updated from the generated JSON without retuning thresholds.
+The locked validation thresholds were applied once to the model-ready test split. Full machine-readable results are available in [`artifacts/metrics/final_test_evaluation.json`](artifacts/metrics/final_test_evaluation.json).
+
+| Disease | Threshold | Precision | Recall | F1 | AUROC | Positive support |
+|---|---:|---:|---:|---:|---:|---:|
+| Cardiomegaly | 0.89 | 0.399 | 0.448 | 0.422 | 0.906 | 145 |
+| Pneumonia | 0.68 | 0.016 | 0.125 | 0.029 | 0.629 | 56 |
+| Pneumothorax | 0.81 | 0.193 | 0.454 | 0.271 | 0.795 | 207 |
+
+Cardiomegaly shows strong ranking performance, while pneumothorax is moderate. Pneumonia remains weak; its result is reported transparently and is a central limitation of this baseline.
 
 ## Installation
 
@@ -82,16 +90,22 @@ PYTHONPATH=src python -m lungai.evaluation.evaluate \
 Run automated checks:
 
 ```bash
-pytest
+python -m pytest
 ```
 
 ## Generated visual results
 
-The final evaluator creates:
+### ROC curves
 
-- `artifacts/plots/roc_curves.png`
-- `artifacts/plots/precision_recall_curves.png`
-- `artifacts/plots/confusion_matrices.png`
+![Test ROC curves](artifacts/plots/roc_curves.png)
+
+### Precision-recall curves
+
+![Test precision-recall curves](artifacts/plots/precision_recall_curves.png)
+
+### Per-disease confusion matrices
+
+![Test confusion matrices](artifacts/plots/confusion_matrices.png)
 
 ## Repository structure
 
